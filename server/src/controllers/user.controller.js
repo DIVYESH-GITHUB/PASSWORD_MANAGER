@@ -1,25 +1,17 @@
-import asyncHandler from "../utils/asyncHandler.js";
-import ApiError from "../utils/apiError.js";
-import { User } from "../models/user.model.js";
-import ApiResponse from "../utils/apiResponse.js";
-import sendVerificationEmail from "../utils/nodemailer.js";
 import crypto from "crypto";
 import fs from "fs";
+import asyncHandler from "../utils/asyncHandler.js";
+import ApiResponse from "../utils/apiResponse.js";
+import ApiError from "../utils/apiError.js";
+import { User } from "../models/user.model.js";
+import sendVerificationEmail from "../utils/nodemailer.js";
 
 const generateToken = () => {
   return crypto.randomBytes(20).toString("hex");
 };
 
 const registeruser = asyncHandler(async (req, res) => {
-  const {
-    email,
-    userName,
-    fullName,
-    password,
-    confirmPassword,
-    masterPassword,
-    confirmMasterPassword,
-  } = req.body;
+  const { email, userName, fullName, password, confirmPassword } = req.body;
 
   // Email validation
   if (!email) {
@@ -79,30 +71,6 @@ const registeruser = asyncHandler(async (req, res) => {
       );
   }
 
-  // Master password validation
-  if (!masterPassword) {
-    return res
-      .status(400)
-      .json(new ApiError(400, false, "Master password not provided"));
-  }
-  if (masterPassword.length <= 6) {
-    return res
-      .status(400)
-      .json(
-        new ApiError(
-          400,
-          false,
-          "Master password length should be more than 6 characters"
-        )
-      );
-  }
-
-  if (masterPassword != confirmMasterPassword) {
-    return res
-      .status(400)
-      .json(new ApiError(400, false, "Passwords doesn't match"));
-  }
-
   // check is user already exist
   const existingUser = await User.findOne({
     $or: [{ userName: userName }, { email: email }],
@@ -124,13 +92,12 @@ const registeruser = asyncHandler(async (req, res) => {
     userName,
     fullName,
     password,
-    masterPassword,
     verificationToken,
   });
 
   // check if user created and removing the password field
   const createdUser = await User.findById(user._id).select(
-    "-password -masterPassword"
+    "-password -verificationToken"
   );
 
   if (!createdUser) {
@@ -237,6 +204,11 @@ const changeUserPassword = asyncHandler(async (req, res) => {
       .status(400)
       .json(new ApiError(400, false, "Password is not specified"));
   }
+  if (!oldPassword) {
+    return res
+      .status(400)
+      .json(new ApiError(400, false, "Old password is not specified"));
+  }
 
   const user = await User.findById(req.user?._id);
 
@@ -246,13 +218,25 @@ const changeUserPassword = asyncHandler(async (req, res) => {
     return res.status(400).json(new ApiError(400, false, "Incorrect password"));
   }
 
+  if (password.trim() == oldPassword.trim()) {
+    return res
+      .status(400)
+      .json(
+        new ApiError(
+          400,
+          false,
+          "Password should be different from old password"
+        )
+      );
+  }
+
   user.password = password;
 
-  const updatedUser = await user.save({ validateBeforeSave: false });
+  await user.save({ validateBeforeSave: false });
 
   return res
-    .status(404)
-    .json(new ApiResponse(200, updatedUser, "Password changed successfully"));
+    .status(200)
+    .json(new ApiResponse(200, {}, "Password changed successfully"));
 });
 
 const updateUserDetails = asyncHandler(async (req, res) => {
@@ -281,6 +265,7 @@ const updateUserDetails = asyncHandler(async (req, res) => {
   }
 
   const userWithSameUsername = await User.findOne({ userName });
+
   if (userWithSameUsername) {
     return res
       .status(401)
@@ -297,6 +282,8 @@ const updateUserDetails = asyncHandler(async (req, res) => {
   }
 
   const updatedUser = await user.save({ validateBeforeSave: false });
+
+  updatedUser.password = undefined;
 
   return res
     .status(200)

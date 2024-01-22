@@ -38,4 +38,8 @@ app.use("/api/v1/healthcheck", healthCheckRouter);
 import userRouter from "./routes/user.routes.js";
 app.use("/api/v1/users", userRouter);
 
+// password router
+import passwordRouter from "./routes/password.routes.js";
+app.use("/api/v1/passwords", passwordRouter);
+
 export { app };

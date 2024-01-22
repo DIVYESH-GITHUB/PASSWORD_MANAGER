@@ -23,11 +23,6 @@ const UserSchema = new Schema(
       required: true,
       trim: true,
     },
-    masterPassword: {
-      type: String,
-      required: true,
-      trim: true,
-    },
     fullName: {
       type: String,
       trim: true,

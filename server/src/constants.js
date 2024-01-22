@@ -19,4 +19,8 @@ const PASSWORD_CATEGORIES = [
   "Others",
 ];
 
-export { DB_NAME, PASSWORD_CATEGORIES };
+const algorithm = "aes-256-cbc";
+
+const ivLength = 16;
+
+export { DB_NAME, PASSWORD_CATEGORIES, algorithm, ivLength };
